@@ -1,6 +1,6 @@
 {
   "name": "subboost",
-  "version": "2.7.0",
+  "version": "2.8.1",
   "license": "AGPL-3.0-only",
   "private": true,
   "engines": {
@@ -14,6 +14,7 @@
     "dev": "npm --workspace @subboost/local run dev",
     "build": "npm --workspace @subboost/local run build",
     "test:unit": "vitest run",
+    "test:coverage": "vitest run --config vitest.coverage.ts --coverage",
     "test:core": "vitest run --config vitest.core.config.ts",
     "lint": "eslint local packages --max-warnings=0 && npm run check:ui-consistency",
     "check:ui-consistency": "node scripts/check-ui-consistency.cjs packages local",
@@ -46,7 +47,7 @@
     "clsx": "^2.1.0",
     "dotenv": "^17.4.2",
     "jose": "^6.2.3",
-    "js-yaml": "^4.3.0",
+    "js-yaml": "^4.3.1",
     "lucide-react": "^1.17.0",
     "next": "^16.2.12",
     "peggy": "^5.1.0",
@@ -62,6 +63,7 @@
     "@types/node": "^22.19.19",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^4.1.8",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.12",
     "postcss": "8.5.23",
@@ -71,7 +73,9 @@
     "vitest": "^4.1.7"
   },
   "overrides": {
+    "deepmerge-ts": "8.0.0",
     "find-my-way": "9.7.0",
+    "nanoid": "3.3.18",
     "postcss": "8.5.23",
     "sharp": "0.35.3",
     "valibot": "1.4.2"
