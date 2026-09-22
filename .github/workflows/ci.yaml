@@ -2,8 +2,9 @@ name: CI
 on:
   push:
     paths-ignore:
-      - './*.md'
-      - 'docs/*'
+      - '*.md'
+      - 'docs/**'
+      - 'LICENSE'
   pull_request:
   workflow_dispatch:
 
