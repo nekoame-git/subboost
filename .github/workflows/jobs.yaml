@@ -1,0 +1,47 @@
+name: 多jobs任务编排
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'LICENSE'
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ $GITHUB_SHA::7 }}
+    steps:
+      - name: 获取commit_sha
+        id: meta
+        run: |
+          echo "commit_sha=$GITHUB_SHA::7" >> $GITHUB_OUTPUT
+          echo "package_version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+  lint:
+    needs: meta
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检查代码
+        run: |
+          npm run lint
+
+  test:
+    needs: meta
+    runs-on: ubuntu-latest
+    steps:
+      - name: 运行测试
+
+  summary:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 总结
+        run: |
+          echo "package_version={{ meta.outputs.package_version }}" >> $GITHUB_OUTPUT
+          echo "### 测试成功 🚀" >> $GITHUB_STEP_SUMMARY
