@@ -1,4 +1,5 @@
 name: 多jobs任务编排
+
 on:
   push:
     paths-ignore:
@@ -11,37 +12,84 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   meta:
     runs-on: ubuntu-latest
     outputs:
-      commit_sha: ${{ $GITHUB_SHA::7 }}
+      commit_sha: ${{ steps.meta.outputs.commit_sha }}
+      package_version: ${{ steps.meta.outputs.package_version }}
     steps:
-      - name: 获取commit_sha
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: 
+          node-version: "22.19.0"
+      - name: 获取版本信息
         id: meta
         run: |
-          echo "commit_sha=$GITHUB_SHA::7" >> $GITHUB_OUTPUT
-          echo "package_version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          echo "commit_sha=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          echo "package_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
   lint:
     needs: meta
     runs-on: ubuntu-latest
     steps:
-      - name: 检查代码
-        run: |
-          npm run lint
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: 
+          node-version: "22.19.0"
+          cache: 'npm'
+      - name: 安装依赖
+        run: npm ci
+      - name: 代码风格与规范检查
+        run: npm run lint
 
-  test:
+  typecheck:
     needs: meta
     runs-on: ubuntu-latest
     steps:
-      - name: 运行测试
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: 
+          node-version: "22.19.0"
+          cache: 'npm'
+      - name: 安装依赖
+        run: npm ci
+      - name: 应用类型检查
+        run: npm run check:local-app
 
-  summary:
-    needs: [lint, test]
+  unit-test:
+    needs: meta
     runs-on: ubuntu-latest
     steps:
-      - name: 总结
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: 
+          node-version: "22.19.0"
+          cache: 'npm'
+      - name: 安装依赖
+        run: npm ci
+      - name: 单元测试与覆盖率
+        run: npm run test:coverage
+      - name: 产物归档 (Coverage Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-artifact
+          path: coverage/
+          retention-days: 1
+
+  summary:
+    needs: [meta, lint, typecheck, unit-test]
+    runs-on: ubuntu-latest
+    if: always() # 保证即使前面测试失败，也能打印出摘要信息
+    steps:
+      - name: 输出质量门禁看板
         run: |
-          echo "package_version={{ meta.outputs.package_version }}" >> $GITHUB_OUTPUT
-          echo "### 测试成功 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 CI 质量门禁执行看板" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 指标项 | 状态 / 详情 |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| :--- | :--- |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Commit SHA** | \`${{ needs.meta.outputs.commit_sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **版本号 (SemVer)** | \`v${{ needs.meta.outputs.package_version }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Lint 检查** | ${{ needs.lint.result == 'success' && '✅ 通过' || '❌ 失败' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **类型检查** | ${{ needs.typecheck.result == 'success' && '✅ 通过' || '❌ 失败' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **单元测试** | ${{ needs.unit-test.result == 'success' && '✅ 通过' || '❌ 失败' }} |" >> "$GITHUB_STEP_SUMMARY"
